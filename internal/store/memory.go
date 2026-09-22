@@ -155,3 +155,35 @@ func cloneCheck(check model.HealthCheck) model.HealthCheck {
 	}
 	return check
 }
+
+func (s *MemoryStore) Summary(ctx context.Context, id int64, now time.Time) (model.ServiceSummary, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return model.ServiceSummary{}, err
+	}
+	service, ok := s.services[id]
+	if !ok {
+		return model.ServiceSummary{}, ErrNotFound
+	}
+	result := model.ServiceSummary{Service: service}
+	up := 0
+	for _, check := range s.checks[id] {
+		if result.LatestCheck == nil || check.CheckedAt.After(result.LatestCheck.CheckedAt) || (check.CheckedAt.Equal(result.LatestCheck.CheckedAt) && check.ID > result.LatestCheck.ID) {
+			copy := cloneCheck(check)
+			result.LatestCheck = &copy
+		}
+		if check.CheckedAt.Before(now.Add(-24*time.Hour)) || check.CheckedAt.After(now) {
+			continue
+		}
+		result.SampleCount++
+		if check.Status == model.StatusUp {
+			up++
+		}
+	}
+	if result.SampleCount > 0 {
+		percent := float64(up) * 100 / float64(result.SampleCount)
+		result.UptimePercent = &percent
+	}
+	return result, nil
+}

@@ -15,9 +15,11 @@ coverage.html
 *.db
 *.db-shm
 *.db-wal
+*.db-journal
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+*.sqlite-journal
 
 # Local environment configuration
 .env

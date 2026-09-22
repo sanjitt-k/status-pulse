@@ -31,7 +31,13 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	serviceStore := store.NewMemoryStore()
+	startupContext, cancelStartup := context.WithTimeout(context.Background(), 10*time.Second)
+	serviceStore, err := store.OpenSQLite(startupContext, cfg.DatabasePath)
+	cancelStartup()
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	defer serviceStore.Close()
 	signalContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	workerContext, cancelWorker := context.WithCancel(signalContext)

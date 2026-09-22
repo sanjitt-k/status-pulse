@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"statuspulse/internal/model"
@@ -36,6 +37,7 @@ func NewHandler(serviceStore store.ServiceStore) http.Handler {
 	mux.HandleFunc("GET /api/services/{id}", h.getService)
 	mux.HandleFunc("DELETE /api/services/{id}", h.deleteService)
 	mux.HandleFunc("GET /api/services/{id}/checks", h.listChecks)
+	mux.HandleFunc("GET /api/services/{id}/summary", h.serviceSummary)
 	return mux
 }
 
@@ -124,6 +126,20 @@ func serviceID(r *http.Request) (int64, error) {
 		return 0, errors.New("service ID must be a positive integer")
 	}
 	return id, nil
+}
+
+func (h handler) serviceSummary(w http.ResponseWriter, r *http.Request) {
+	id, err := serviceID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	summary, err := h.store.Summary(r.Context(), id, time.Now().UTC())
+	if err != nil {
+		handleStoreError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
 }
 
 func (h handler) listChecks(w http.ResponseWriter, r *http.Request) {

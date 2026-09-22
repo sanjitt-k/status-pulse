@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"time"
 
 	"statuspulse/internal/model"
 )
@@ -18,4 +19,5 @@ type ServiceStore interface {
 	Delete(context.Context, int64) error
 	SaveCheck(context.Context, model.HealthCheck) error
 	ListChecks(context.Context, int64, int, int) ([]model.HealthCheck, error)
+	Summary(context.Context, int64, time.Time) (model.ServiceSummary, error)
 }

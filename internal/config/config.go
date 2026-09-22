@@ -13,6 +13,7 @@ type Config struct {
 	ListenAddress  string
 	CheckInterval  time.Duration
 	RequestTimeout time.Duration
+	DatabasePath   string
 }
 
 // Load reads configuration from the environment and applies defaults.
@@ -30,7 +31,11 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	return Config{ListenAddress: listenAddress, CheckInterval: interval, RequestTimeout: timeout}, nil
+	databasePath := os.Getenv("STATUSPULSE_DB_PATH")
+	if databasePath == "" {
+		databasePath = "statuspulse.db"
+	}
+	return Config{ListenAddress: listenAddress, CheckInterval: interval, RequestTimeout: timeout, DatabasePath: databasePath}, nil
 }
 
 func duration(name string, fallback time.Duration) (time.Duration, error) {
