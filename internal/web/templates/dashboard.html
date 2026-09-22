@@ -1,0 +1,47 @@
+{{define "dashboard"}}{{template "header" "Dashboard"}}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Overview</p>
+    <h1>Service health at a glance</h1>
+    <p class="lede">Status reflects the latest completed check. Uptime is the share of successful samples recorded during the last 24 hours.</p>
+  </div>
+  <div class="metric"><strong>{{len .Services}}</strong><span>services</span></div>
+</section>
+
+<section class="panel form-panel" aria-labelledby="add-service-title">
+  <div>
+    <h2 id="add-service-title">Add a service</h2>
+    <p>StatusPulse will begin checking it during the next monitoring cycle.</p>
+  </div>
+  {{if .FormError}}<div class="form-error" role="alert">{{.FormError}}</div>{{end}}
+  <form method="post" action="/services" class="service-form">
+    <label>Name<input name="name" value="{{.FormName}}" maxlength="100" required placeholder="GitHub API"></label>
+    <label>HTTP or HTTPS URL<input name="url" value="{{.FormURL}}" maxlength="2048" type="url" required placeholder="https://api.github.com"></label>
+    <button type="submit">Add service</button>
+  </form>
+</section>
+
+<section class="panel services-panel" aria-labelledby="services-title">
+  <div class="panel-heading"><h2 id="services-title">Monitored services</h2><span>24-hour window</span></div>
+  {{if .Services}}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Service</th><th>Status</th><th>Response</th><th>Uptime</th><th>Last check</th></tr></thead>
+      <tbody>
+      {{range .Services}}
+        <tr>
+          <td><a class="service-name" href="/services/{{.ID}}">{{.Name}}</a><span class="service-url">{{.URL}}</span></td>
+          <td><span class="status {{.StatusClass}}"><i></i>{{.Status}}</span>{{if .Stale}}<span class="stale">Stale</span>{{end}}</td>
+          <td>{{.ResponseTime}}</td>
+          <td><strong>{{.Uptime}}</strong><span class="sample-count">{{.SampleCount}} samples</span></td>
+          <td>{{.LastChecked}}{{if .LastCheckedAge}}<span class="sample-count">{{.LastCheckedAge}}</span>{{end}}</td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty"><strong>No services yet</strong><p>Add your first URL above to begin monitoring.</p></div>
+  {{end}}
+</section>
+{{template "footer"}}{{end}}

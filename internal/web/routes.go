@@ -24,27 +24,26 @@ const (
 )
 
 type handler struct {
-	store store.ServiceStore
+	store         store.ServiceStore
+	checkInterval time.Duration
 }
 
 // NewHandler builds the HTTP handler used by the StatusPulse server.
-func NewHandler(serviceStore store.ServiceStore) http.Handler {
-	h := handler{store: serviceStore}
+func NewHandler(serviceStore store.ServiceStore, checkInterval time.Duration) http.Handler {
+	h := handler{store: serviceStore, checkInterval: checkInterval}
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", home)
+	mux.HandleFunc("GET /{$}", h.dashboard)
+	mux.HandleFunc("POST /services", h.createServicePage)
+	mux.HandleFunc("GET /services/{id}", h.servicePage)
+	mux.HandleFunc("POST /services/{id}/delete", h.deleteServicePage)
+	mux.Handle("GET /static/", staticHandler())
 	mux.HandleFunc("GET /api/services", h.listServices)
 	mux.HandleFunc("POST /api/services", h.createService)
 	mux.HandleFunc("GET /api/services/{id}", h.getService)
 	mux.HandleFunc("DELETE /api/services/{id}", h.deleteService)
 	mux.HandleFunc("GET /api/services/{id}/checks", h.listChecks)
 	mux.HandleFunc("GET /api/services/{id}/summary", h.serviceSummary)
-	return mux
-}
-
-func home(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprintln(w, "StatusPulse is running")
+	return protectBrowserMutations(mux)
 }
 
 type createServiceRequest struct {

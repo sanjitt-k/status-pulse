@@ -52,7 +52,7 @@ func run() error {
 
 	server := &http.Server{
 		Addr:              cfg.ListenAddress,
-		Handler:           web.NewHandler(serviceStore),
+		Handler:           web.NewHandler(serviceStore, cfg.CheckInterval),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

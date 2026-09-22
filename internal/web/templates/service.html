@@ -1,0 +1,34 @@
+{{define "service"}}{{template "header" .Service.Name}}
+<a class="back" href="/">← Back to dashboard</a>
+<section class="detail-header">
+  <div>
+    <p class="eyebrow">Service #{{.Service.ID}}</p>
+    <h1>{{.Service.Name}}</h1>
+    <a class="endpoint" href="{{.Service.URL}}" target="_blank" rel="noreferrer">{{.Service.URL}}</a>
+  </div>
+  <span class="status large {{.Service.StatusClass}}"><i></i>{{.Service.Status}}</span>
+</section>
+
+<section class="stats" aria-label="Current service statistics">
+  <div class="stat"><span>Response time</span><strong>{{.Service.ResponseTime}}</strong></div>
+  <div class="stat"><span>Observed uptime · 24h</span><strong>{{.Service.Uptime}}</strong><small>{{.Service.SampleCount}} samples</small></div>
+  <div class="stat"><span>Last checked</span><strong>{{if .Service.LastCheckedAge}}{{.Service.LastCheckedAge}}{{else}}Not checked{{end}}</strong><small>{{.Service.LastChecked}}</small></div>
+  <div class="stat"><span>Monitoring since</span><strong>{{.Service.CreatedAt}}</strong></div>
+</section>
+
+<section class="panel history-panel">
+  <div class="panel-heading"><div><h2>Recent history</h2><p>Latest 50 completed checks</p></div>
+    <form method="post" action="/services/{{.Service.ID}}/delete" onsubmit="return confirm('Delete this service and its history?')"><button class="danger" type="submit">Delete service</button></form>
+  </div>
+  {{if .Checks}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Time</th><th>Status</th><th>HTTP</th><th>Response</th><th>Details</th></tr></thead>
+    <tbody>{{range .Checks}}<tr>
+      <td>{{.CheckedAt}}<span class="sample-count">{{.CheckedAge}}</span></td>
+      <td><span class="status {{.StatusClass}}"><i></i>{{.Status}}</span></td>
+      <td>{{.HTTPCode}}</td><td>{{.ResponseTime}}</td><td class="error-detail">{{if .Error}}{{.Error}}{{else}}—{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<div class="empty"><strong>No completed checks</strong><p>This service will appear here after its first monitoring cycle.</p></div>{{end}}
+</section>
+{{template "footer"}}{{end}}

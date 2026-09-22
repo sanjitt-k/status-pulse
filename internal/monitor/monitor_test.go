@@ -124,7 +124,7 @@ func TestAPIRegistrationMonitoringHistoryAndDeletion(t *testing.T) {
 	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(503) }))
 	defer endpoint.Close()
 	s := store.NewMemoryStore()
-	api := web.NewHandler(s)
+	api := web.NewHandler(s, time.Minute)
 	created := httptest.NewRecorder()
 	api.ServeHTTP(created, httptest.NewRequest(http.MethodPost, "/api/services", strings.NewReader(`{"name":"Local","url":"`+endpoint.URL+`"}`)))
 	if created.Code != 201 {

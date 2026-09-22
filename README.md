@@ -1,6 +1,6 @@
 # StatusPulse
 
-StatusPulse is a lightweight uptime and service monitoring application written in Go. Phase 4 persists services and HTTP check history in SQLite and provides observed uptime summaries.
+StatusPulse is a lightweight uptime and service monitoring application written in Go. Phase 5 adds a server-rendered dashboard for managing services and inspecting their recent monitoring history.
 
 Services and check history survive restarts in a local SQLite database. Run this version locally or on a trusted private network; registered URLs cause outbound requests, including to private addresses.
 
@@ -16,7 +16,23 @@ From the repository root:
 go run ./cmd/statuspulse
 ```
 
-The server listens on `:8080` by default. Open <http://localhost:8080/> to verify that it is running. Press Ctrl+C to shut it down gracefully.
+The server listens on `:8080` by default. Open <http://localhost:8080/> to use the dashboard. Press Ctrl+C to shut it down gracefully.
+
+## Dashboard
+
+The dashboard uses Go's `html/template` package and embedded CSS, so the compiled
+binary does not depend on template files in its working directory. It shows the
+latest status, response time, last check age, and 24-hour observed uptime. Select
+a service to view its latest 50 checks or delete it and its history.
+
+New services display **Not checked** until the worker records a result. A result
+older than two configured check intervals displays **Stale**. Status always uses
+text and color. Times are displayed in UTC, and uptime includes its sample count.
+
+Add-service validation errors preserve the submitted values. Templates escape
+service names, URLs, and failure messages before rendering. Browser form changes
+are protected with `Origin` and Fetch Metadata checks; command-line API requests
+may omit those browser headers.
 
 ## Configuration
 
@@ -66,7 +82,10 @@ Invoke-RestMethod -Method Delete http://localhost:8080/api/services/1
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | Verify that StatusPulse is running |
+| `GET` | `/` | Render the dashboard |
+| `POST` | `/services` | Add a service from the dashboard form |
+| `GET` | `/services/{id}` | Render service details and recent history |
+| `POST` | `/services/{id}/delete` | Delete from an HTML form and redirect |
 | `POST` | `/api/services` | Register a service |
 | `GET` | `/api/services` | List registered services |
 | `GET` | `/api/services/{id}` | Get one service |

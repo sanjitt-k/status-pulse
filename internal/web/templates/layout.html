@@ -1,0 +1,21 @@
+{{define "header"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.}} · StatusPulse</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">Status<span>Pulse</span></a>
+    <p>Lightweight endpoint monitoring</p>
+  </header>
+  <main class="page">
+{{end}}
+
+{{define "footer"}}
+  </main>
+  <footer>Checks run in the background. Times are shown in UTC.</footer>
+</body>
+</html>{{end}}
