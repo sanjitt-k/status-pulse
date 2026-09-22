@@ -1,6 +1,6 @@
 # StatusPulse
 
-StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 7 packages the application as a non-root container with persistent storage.
+StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 8 adds GitHub Actions checks and versioned container publishing to GHCR.
 
 Services and check history survive restarts in a local SQLite database. Run this version locally or on a trusted private network; registered URLs cause outbound requests, including to private addresses.
 
@@ -197,6 +197,11 @@ from checks still in flight are discarded. Shutdown cancels active requests
 without recording a false DOWN result and waits for the worker to exit.
 
 ## Verification
+
+GitHub Actions runs formatting, vet, race-enabled tests, binary builds, and
+container smoke checks on pushes and pull requests. Pushing a version tag such
+as `v0.1.0` publishes a tested image after all checks pass. See the
+[CI and release guide](docs/ci-cd.md) for triggers, permissions, and release steps.
 
 See [the testing guide](docs/testing.md) for the test layers, coverage commands,
 race-detector requirements, and manual lifecycle checks.

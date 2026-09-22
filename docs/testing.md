@@ -67,9 +67,14 @@ wait for a result. Press Ctrl+C, confirm the shutdown log, restart with the same
 database, and verify the service/history remain. Do not use your real database
 for destructive test scenarios.
 
-## Phase 6 verification on this workspace
+## Workspace verification
 
-The ordinary test suite passes. The Windows race-detector attempt is blocked
-because GCC is not installed; enabling CGo alone is insufficient. Run the race
-command on a machine with a supported compiler before treating that check as
-complete. Docker, CI, and deployment setup remain later phases.
+The ordinary test suite passes. Windows still lacks GCC, but Phase 8 verified
+`go vet ./...` and `CGO_ENABLED=1 go test -race -count=1 -timeout=120s ./...`
+successfully in a Linux build container with GCC installed. The GitHub Actions
+workflow runs these checks on Ubuntu for pushes and pull requests.
+
+The container smoke check also passed locally, verifying health, API access,
+non-root execution, CA certificates, and graceful shutdown. See
+[CI/CD](ci-cd.md) for pipeline details. A hosted workflow run requires pushing
+the workflow to GitHub; local verification does not publish an image.

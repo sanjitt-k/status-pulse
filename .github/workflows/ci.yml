@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    name: Go checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: .go-version
+          cache-dependency-path: go.sum
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l cmd internal)
+          if [[ -n "$unformatted" ]]; then
+            printf 'Run gofmt on:\n%s\n' "$unformatted"
+            exit 1
+          fi
+      - name: Download and verify modules
+        run: |
+          go mod download
+          go mod verify
+      - name: Static analysis
+        run: go vet ./...
+      - name: Tests with race detection
+        env:
+          CGO_ENABLED: '1'
+        run: go test -race -count=1 -timeout=120s ./...
+      - name: Build binary
+        env:
+          CGO_ENABLED: '0'
+        run: go build -trimpath -o bin/statuspulse ./cmd/statuspulse
+
+  container:
+    name: Container checks
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate Compose
+        run: docker compose config --quiet
+      - name: Build image
+        run: docker build --build-arg "GO_VERSION=$(cat .go-version)" -t statuspulse:ci .
+      - name: Smoke test container
+        run: bash scripts/container-smoke.sh statuspulse:ci
+
+  publish:
+    name: Publish versioned image
+    needs: [checks, container]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate release and name image
+        id: image
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'Release tags must use vMAJOR.MINOR.PATCH, for example v0.1.0.'
+            exit 1
+          fi
+          echo "name=ghcr.io/${REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - name: Build release image
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          docker build --build-arg "GO_VERSION=$(cat .go-version)" \
+            --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.version=$RELEASE_TAG" \
+            -t "$IMAGE:$RELEASE_TAG" -t "$IMAGE:sha-$GITHUB_SHA" .
+      - name: Smoke test release image
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash scripts/container-smoke.sh "$IMAGE:$RELEASE_TAG"
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+      - name: Push image tags
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          docker push "$IMAGE:$RELEASE_TAG"
+          docker push "$IMAGE:sha-$GITHUB_SHA"
+          printf 'Published `%s:%s` and `%s:sha-%s`\n' "$IMAGE" "$RELEASE_TAG" "$IMAGE" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+      - name: Log out
+        if: always()
+        run: docker logout ghcr.io
