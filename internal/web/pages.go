@@ -258,14 +258,18 @@ func htmlStoreError(w http.ResponseWriter, r *http.Request, err error) {
 // cross-site and validates Origin when it is present. CLI clients may omit both.
 func protectBrowserMutations(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
 			if strings.EqualFold(r.Header.Get("Sec-Fetch-Site"), "cross-site") {
 				http.Error(w, "cross-origin request denied", http.StatusForbidden)
 				return
 			}
 			if origin := r.Header.Get("Origin"); origin != "" {
 				parsed, err := url.Parse(origin)
-				if err != nil || !strings.EqualFold(parsed.Host, r.Host) {
+				scheme := "http"
+				if r.TLS != nil {
+					scheme = "https"
+				}
+				if err != nil || !strings.EqualFold(parsed.Host, r.Host) || parsed.Scheme != scheme || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
 					http.Error(w, "cross-origin request denied", http.StatusForbidden)
 					return
 				}

@@ -1,6 +1,6 @@
 # StatusPulse
 
-StatusPulse is a lightweight uptime and service monitoring application written in Go. Phase 5 adds a server-rendered dashboard for managing services and inspecting their recent monitoring history.
+StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 6 adds regression coverage for configuration, API validation, concurrency, scheduler behavior, and persistence integration.
 
 Services and check history survive restarts in a local SQLite database. Run this version locally or on a trusted private network; registered URLs cause outbound requests, including to private addresses.
 
@@ -128,6 +128,9 @@ from checks still in flight are discarded. Shutdown cancels active requests
 without recording a false DOWN result and waits for the worker to exit.
 
 ## Verification
+
+See [the testing guide](docs/testing.md) for the test layers, coverage commands,
+race-detector requirements, and manual lifecycle checks.
 
 ```powershell
 go test ./...

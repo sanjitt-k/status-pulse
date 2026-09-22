@@ -24,12 +24,20 @@ func NewScheduler(serviceStore store.ServiceStore, checker *Checker, interval ti
 func (s *Scheduler) Run(ctx context.Context) {
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
+	s.run(ctx, ticker.C)
+}
+
+// A supplied tick channel lets tests drive scheduling without clock sleeps.
+func (s *Scheduler) run(ctx context.Context, ticks <-chan time.Time) {
 	for {
+		if ctx.Err() != nil {
+			return
+		}
 		s.runCycle(ctx)
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-ticks:
 		}
 	}
 }
