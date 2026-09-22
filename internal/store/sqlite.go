@@ -51,6 +51,12 @@ func OpenSQLite(ctx context.Context, path string) (*SQLiteStore, error) {
 
 func (s *SQLiteStore) Close() error { return s.db.Close() }
 
+// Ready performs a bounded schema read, not a write or an external endpoint check.
+func (s *SQLiteStore) Ready(ctx context.Context) error {
+	var count int
+	return s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&count)
+}
+
 func (s *SQLiteStore) migrate(ctx context.Context) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

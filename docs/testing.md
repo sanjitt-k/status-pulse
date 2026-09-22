@@ -41,6 +41,11 @@ still require a separate manual check. Generated coverage files are ignored.
 
 ## What each layer proves
 
+Phase 10 adds health/metrics handler tests, isolated Prometheus registry checks,
+SQLite readiness tests for canceled contexts and closed databases, and scheduler
+tests proving that only persisted results increment check counters. Failed saves
+increment worker errors; canceled work produces no false monitoring observation.
+
 | Tests | Behaviors |
 | --- | --- |
 | `internal/config` | Defaults, environment overrides, invalid and overflowing durations |

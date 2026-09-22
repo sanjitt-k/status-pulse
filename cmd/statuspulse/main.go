@@ -13,6 +13,7 @@ import (
 
 	"statuspulse/internal/config"
 	"statuspulse/internal/monitor"
+	"statuspulse/internal/observability"
 	"statuspulse/internal/store"
 	"statuspulse/internal/web"
 )
@@ -20,6 +21,7 @@ import (
 const shutdownTimeout = 5 * time.Second
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	if err := run(); err != nil {
 		slog.Error("application stopped", "error", err)
 		os.Exit(1)
@@ -44,15 +46,23 @@ func run() error {
 	checker := monitor.NewChecker(cfg.RequestTimeout)
 	defer checker.Close()
 	workerDone := make(chan struct{})
+	metrics := observability.New()
+	scheduler := monitor.NewScheduler(serviceStore, checker, cfg.CheckInterval)
+	scheduler.Metrics = metrics
 	go func() {
 		defer close(workerDone)
-		monitor.NewScheduler(serviceStore, checker, cfg.CheckInterval).Run(workerContext)
+		scheduler.Run(workerContext)
 	}()
 	defer func() { cancelWorker(); <-workerDone }()
 
 	server := &http.Server{
-		Addr:              cfg.ListenAddress,
-		Handler:           web.NewHandler(serviceStore, cfg.CheckInterval),
+		Addr: cfg.ListenAddress,
+		Handler: metrics.Handler(web.NewHandler(serviceStore, cfg.CheckInterval), func(ctx context.Context) error {
+			if err := signalContext.Err(); err != nil {
+				return err
+			}
+			return serviceStore.Ready(ctx)
+		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -1,6 +1,6 @@
 # StatusPulse
 
-StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 9 adds a local Kubernetes deployment with persistent storage.
+StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 10 adds health endpoints, JSON logs, Prometheus metrics, and an optional Grafana dashboard.
 
 Services and check history survive restarts in a local SQLite database. Run this version locally or on a trusted private network; registered URLs cause outbound requests, including to private addresses.
 
@@ -68,8 +68,8 @@ receives termination signals directly, and uses an exec-form entrypoint.
 
 The runtime filesystem is read-only except for the named `/data` volume and a
 small temporary filesystem at `/tmp`. Linux capabilities are dropped and new
-privileges are disabled. The image health check requests the dashboard over the
-container's loopback interface. It verifies that the process can serve a request;
+privileges are disabled. The image health check requests readiness over the
+container's loopback interface at `/readyz`. It verifies a bounded SQLite read;
 endpoint failures being monitored do not make the StatusPulse container unhealthy.
 
 Build or run the image without Compose:
@@ -95,6 +95,22 @@ Follow the [Kubernetes guide](docs/kubernetes.md) to build and deploy on Docker
 Desktop, access the dashboard, and verify persistence across Pod replacements.
 It also explains configuration changes, image updates, troubleshooting, and
 how to stop the application without deleting its database.
+
+## Observability
+
+`/livez` checks HTTP responsiveness, `/readyz` checks SQLite readiness, and
+`/metrics` exports Prometheus metrics. Logs are structured JSON on stdout.
+The optional stack provisions Prometheus and a Grafana operations dashboard:
+
+```powershell
+docker compose -f compose.yaml -f compose.observability.yaml up --build -d
+```
+
+Open [Grafana](http://localhost:3000/d/statuspulse) or
+[Prometheus targets](http://localhost:9090/targets). This monitors the Compose
+application, with its own data separate from Kubernetes. See the
+[observability guide](docs/observability.md) for metric semantics, ports,
+Kubernetes updates, and stopping the stack without deleting data.
 
 ## Dashboard
 

@@ -63,7 +63,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate Compose
-        run: docker compose config --quiet
+        run: |
+          docker compose config --quiet
+          docker compose -f compose.yaml -f compose.observability.yaml config --quiet
       - name: Build image
         run: docker build --build-arg "GO_VERSION=$(cat .go-version)" -t statuspulse:ci .
       - name: Smoke test container

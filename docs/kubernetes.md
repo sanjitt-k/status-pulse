@@ -35,7 +35,7 @@ Check that the node is Ready and a default StorageClass exists:
 ```powershell
 kubectl --context docker-desktop get nodes
 kubectl --context docker-desktop get storageclass
-docker build -t statuspulse:phase9 .
+docker build -t statuspulse:phase10 .
 
 kubectl --context docker-desktop apply -f deploy/kubernetes/namespace.yaml
 kubectl --context docker-desktop apply --dry-run=server -f deploy/kubernetes/
@@ -46,7 +46,7 @@ kubectl --context docker-desktop -n statuspulse get pods,services,pvc
 
 The local image must be available to the Kubernetes node. Docker Desktop's kubeadm
 cluster can use the image built above. For a separate kind cluster, load it with
-`kind load docker-image statuspulse:phase9 --name YOUR_CLUSTER` and use that
+`kind load docker-image statuspulse:phase10 --name YOUR_CLUSTER` and use that
 cluster's context. An image present only in the host Docker cache is not sufficient
 for every cluster provisioner. A published registry image is another option below.
 
@@ -64,12 +64,12 @@ Use this unauthenticated application on a trusted local cluster.
 ## Probes, permissions, and resources
 
 Kubernetes uses the probes in the Pod specification, not the Dockerfile HEALTHCHECK.
-The TCP startup probe allows about 60 seconds for startup. Readiness requests
-`/api/services`, exercising HTTP and a SQLite read; failure removes the Pod from
-Service traffic. The TCP liveness probe checks that the server accepts connections.
-It is deliberately limited: it cannot detect every handler deadlock. Monitored
+The HTTP startup probe allows about 60 seconds for startup. Readiness requests
+`/readyz`, exercising HTTP and a bounded SQLite read; failure removes the Pod from
+Service traffic. The HTTP liveness probe requests `/livez` without accessing storage.
+It is deliberately limited: it cannot detect every worker failure. Monitored
 endpoints reporting DOWN do not fail these probes. Dedicated health endpoints
-remain a Phase 10 improvement.
+are provided by Phase 10; see [observability](observability.md).
 
 The process runs as UID/GID 10001, drops capabilities, uses a read-only root
 filesystem, and gets no Kubernetes API token. `/data` is persistent; `/tmp` is
@@ -122,7 +122,7 @@ kubectl --context docker-desktop -n statuspulse rollout restart deployment/statu
 kubectl --context docker-desktop -n statuspulse rollout status deployment/statuspulse --timeout=180s
 ```
 
-For code updates, build a new image tag (for example `statuspulse:phase9-2`), change
+For code updates, build a new image tag (for example `statuspulse:phase10-2`), change
 `image:` in `deployment.yaml`, and apply that file. Unique tags avoid stale local
 image caches. To deploy a Phase 8 release, replace `image:` with an actually
 published `ghcr.io/sanjitt-k/status-pulse:vX.Y.Z` or an immutable digest. Private

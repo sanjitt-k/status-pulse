@@ -6,10 +6,13 @@ import (
 	"log/slog"
 	"time"
 
+	"statuspulse/internal/observability"
 	"statuspulse/internal/store"
 )
 
 type Scheduler struct {
+	// Metrics is optional and must be set before Run starts.
+	Metrics  *observability.Metrics
 	store    store.ServiceStore
 	checker  *Checker
 	interval time.Duration
@@ -46,9 +49,15 @@ func (s *Scheduler) runCycle(ctx context.Context) {
 	services, err := s.store.List(ctx)
 	if err != nil {
 		if ctx.Err() == nil {
+			if s.Metrics != nil {
+				s.Metrics.Errors.WithLabelValues("list").Inc()
+			}
 			slog.Error("list services for monitoring", "error", err)
 		}
 		return
+	}
+	if s.Metrics != nil {
+		s.Metrics.Services.Set(float64(len(services)))
 	}
 	for _, service := range services {
 		if ctx.Err() != nil {
@@ -59,11 +68,30 @@ func (s *Scheduler) runCycle(ctx context.Context) {
 			return
 		}
 		if err != nil {
+			if s.Metrics != nil {
+				s.Metrics.Errors.WithLabelValues("check").Inc()
+			}
 			slog.Error("check service", "service_id", service.ID, "error", err)
 			continue
 		}
-		if err := s.store.SaveCheck(ctx, result); err != nil && !errors.Is(err, store.ErrNotFound) && ctx.Err() == nil {
-			slog.Error("save check", "service_id", service.ID, "error", err)
+		if err := s.store.SaveCheck(ctx, result); err != nil {
+			if !errors.Is(err, store.ErrNotFound) && ctx.Err() == nil {
+				if s.Metrics != nil {
+					s.Metrics.Errors.WithLabelValues("save").Inc()
+				}
+				slog.Error("save check", "service_id", service.ID, "error", err)
+			}
+			continue
 		}
+		if s.Metrics != nil {
+			s.Metrics.Checks.WithLabelValues(string(result.Status)).Inc()
+			if result.ResponseTimeMS != nil {
+				s.Metrics.Latency.Observe(float64(*result.ResponseTimeMS) / 1000)
+			}
+		}
+		slog.Info("check recorded", "service_id", service.ID, "status", result.Status, "http_status_code", result.HTTPStatusCode, "response_time_ms", result.ResponseTimeMS, "error_kind", result.ErrorKind)
+	}
+	if ctx.Err() == nil {
+		s.Metrics.CycleCompleted()
 	}
 }
