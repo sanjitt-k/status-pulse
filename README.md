@@ -1,6 +1,6 @@
 # StatusPulse
 
-StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 6 adds regression coverage for configuration, API validation, concurrency, scheduler behavior, and persistence integration.
+StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 7 packages the application as a non-root container with persistent storage.
 
 Services and check history survive restarts in a local SQLite database. Run this version locally or on a trusted private network; registered URLs cause outbound requests, including to private addresses.
 
@@ -17,6 +17,75 @@ go run ./cmd/statuspulse
 ```
 
 The server listens on `:8080` by default. Open <http://localhost:8080/> to use the dashboard. Press Ctrl+C to shut it down gracefully.
+
+## Run with Docker Compose
+
+Build and start StatusPulse:
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Open <http://localhost:8080/>. Follow the application logs with:
+
+```powershell
+docker compose logs -f app
+```
+
+Stop the container while retaining its SQLite database:
+
+```powershell
+docker compose down
+```
+
+Start it again with `docker compose up -d`; registered services and history
+remain in the `statuspulse-data` named volume. `docker compose down --volumes`
+deletes that volume and its database, so use it only when you intend to reset all
+StatusPulse data.
+
+To use a different host port or monitoring timings, set environment values before
+starting Compose:
+
+```powershell
+$env:STATUSPULSE_PORT = "9090"
+$env:STATUSPULSE_CHECK_INTERVAL = "30s"
+$env:STATUSPULSE_REQUEST_TIMEOUT = "3s"
+docker compose up --build -d
+```
+
+The Compose service always listens on port 8080 inside the container. The image
+stores SQLite at `/data/statuspulse.db`; mount the `/data` directory rather than
+only the database file so SQLite can create journal files beside it.
+
+## Container design
+
+The multi-stage [Dockerfile](Dockerfile) compiles a static Linux binary in a Go
+builder image, then copies only that binary into an Alpine runtime image with CA
+certificates. HTTPS monitoring therefore works without shipping the Go compiler.
+The final process runs as the unprivileged `statuspulse` user (UID/GID 10001),
+receives termination signals directly, and uses an exec-form entrypoint.
+
+The runtime filesystem is read-only except for the named `/data` volume and a
+small temporary filesystem at `/tmp`. Linux capabilities are dropped and new
+privileges are disabled. The image health check requests the dashboard over the
+container's loopback interface. It verifies that the process can serve a request;
+endpoint failures being monitored do not make the StatusPulse container unhealthy.
+
+Build or run the image without Compose:
+
+```powershell
+docker build -t statuspulse:local .
+docker volume create statuspulse-data
+docker run --name statuspulse --rm `
+    --publish 8080:8080 `
+    --volume statuspulse-data:/data `
+    statuspulse:local
+```
+
+`docker stop statuspulse` sends SIGTERM. StatusPulse stops scheduling work,
+cancels active checks, shuts down the HTTP server, and closes SQLite before the
+container exits. The Compose stop grace period is ten seconds.
 
 ## Dashboard
 
