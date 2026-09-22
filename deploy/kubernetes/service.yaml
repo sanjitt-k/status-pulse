@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: statuspulse
+  namespace: statuspulse
+spec:
+  type: ClusterIP
+  selector:
+    app: statuspulse
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

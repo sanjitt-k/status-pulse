@@ -1,6 +1,6 @@
 # StatusPulse
 
-StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 8 adds GitHub Actions checks and versioned container publishing to GHCR.
+StatusPulse is a lightweight uptime and service monitoring application written in Go. It provides a server-rendered dashboard, background HTTP checks, and SQLite history. Phase 9 adds a local Kubernetes deployment with persistent storage.
 
 Services and check history survive restarts in a local SQLite database. Run this version locally or on a trusted private network; registered URLs cause outbound requests, including to private addresses.
 
@@ -86,6 +86,15 @@ docker run --name statuspulse --rm `
 `docker stop statuspulse` sends SIGTERM. StatusPulse stops scheduling work,
 cancels active checks, shuts down the HTTP server, and closes SQLite before the
 container exits. The Compose stop grace period is ten seconds.
+
+## Run on Kubernetes
+
+The manifests in `deploy/kubernetes/` run a single StatusPulse replica with a
+ConfigMap, persistent SQLite volume, health probes, and an internal Service.
+Follow the [Kubernetes guide](docs/kubernetes.md) to build and deploy on Docker
+Desktop, access the dashboard, and verify persistence across Pod replacements.
+It also explains configuration changes, image updates, troubleshooting, and
+how to stop the application without deleting its database.
 
 ## Dashboard
 
