@@ -1,0 +1,31 @@
+# Go build output
+/bin/
+/dist/
+/statuspulse
+/statuspulse.exe
+*.test
+*.out
+
+# Test coverage
+coverage.out
+coverage.html
+
+# StatusPulse runtime data
+/data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Local environment configuration
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
